@@ -1,32 +1,49 @@
 Function Load-Types {
-
-$references = @("System.Xml")
-$Source = Get-Content -Path "C:\Users\ccrossan\source\repos\Encryption\Encryption\Program.cs" -Raw
-    
-Add-Type -ReferencedAssemblies $references -TypeDefinition $Source -Language CSharp 
-
+    $references = @("System.Xml", "LZ4")
+    $Source = Get-Content -Path "$PSScriptRoot\\Program.cs" -Raw
+    Add-Type -Path "$PSScriptRoot\\LZ4.dll"
+    Add-Type -ReferencedAssemblies $references -TypeDefinition $Source -Language CSharp 
 }
-
-
-Function Send {
+Function Send-File {
     <#
         .SYNOPSIS
             Sends a file using a passphrase to a recipient
     #>
     Param(
+        [Parameter(Mandatory=$true)]
         $File,
-        $Passphrase
+        [Parameter(Mandatory=$true)]
+        $Passphrase,
+        [Parameter(Mandatory=$true)]
+        $TargetAddress,
+        [Parameter(Mandatory=$true)]
+        $TargetPort
     )
-    Load-Types
-    [PoshMove.Utils]::Send($file,"127.0.0.1")
+    Invoke-Command -ScriptBlock {
+        Param(
+            $file, $TargetAddress, $TargetPort, $Passphrase
+        )
+        Load-Types
+        [PoshMove.Utils]::Send($file, $TargetAddress, $TargetPort, $Passphrase)
+    } -ArgumentList @($file, $TargetAddress, $TargetPort, $Passphrase)
+   
 
 }
 
-
-Function Receive {
+Function Receive-File {
     Param(
-        $ReceivePath
+        [Parameter(Mandatory=$true)]
+        $ReceivePath,
+        [Parameter(Mandatory=$true)]
+        $ListenPort,
+        [Parameter(Mandatory=$true)]
+        $Passphrase
     )
-    Load-Types
-    [PoshMove.Utils]::Receive("./recpt")
+    Invoke-Command -ScriptBlock {
+        Param(
+            $ReceivePath, $ListenPort, $Passphrase
+        )
+        Load-Types
+        [PoshMove.Utils]::Receive($ReceivePath, $ListenPort, $Passphrase)
+    } -ArgumentList @($ReceivePath, $ListenPort, $Passphrase)
 }
